@@ -1,0 +1,274 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  settings     Settings?
+  tasks        Task[]
+  goals        Goal[]
+  habits       Habit[]
+  events       Event[]
+  journals     JournalEntry[]
+  notes        Note[]
+  workouts     Workout[]
+  expenses     Expense[]
+  budgets      Budget[]
+  courses      Course[]
+  projects     Project[]
+  notifications Notification[]
+  aiChats      AiConversation[]
+}
+
+model Settings {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme             String   @default("dark") // "dark" | "light"
+  accentColor       String   @default("emerald") // "emerald" | "blue" | "indigo" | "violet" | "rose"
+  notificationsOn   Boolean  @default(true)
+  connectedGithub   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Goal {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String      // e.g. "Save 50,000 MAD"
+  targetValue   Float       // e.g. 50000
+  currentValue  Float       @default(0)
+  unit          String      // e.g. "MAD"
+  deadline      DateTime?
+  notes         String?
+  aiSuggestions String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  milestones    Milestone[]
+}
+
+model Milestone {
+  id          String   @id @default(uuid())
+  goalId      String
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title       String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  priority    String    @default("MEDIUM") // "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+  status      String    @default("TODO")   // "TODO" | "IN_PROGRESS" | "DONE" | "BACKLOG"
+  dueDate     DateTime?
+  label       String?   // e.g. "work", "personal", "study"
+  isRecurring Boolean   @default(false)
+  recurrence  String?   // "DAILY" | "WEEKLY" | "MONTHLY"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  subtasks    Subtask[]
+}
+
+model Subtask {
+  id          String   @id @default(uuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title       String
+  isCompleted Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Habit {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String          // e.g. "Drink water"
+  frequency      String          @default("DAILY") // "DAILY" | "WEEKLY"
+  streak         Int             @default(0)
+  bestStreak     Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  completions    HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now()) // Stored as normalized start-of-day
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  isAllDay    Boolean  @default(false)
+  color       String?  // e.g. "indigo", "rose", "emerald"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JournalEntry {
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  content       String
+  mood          String   // "happy" | "neutral" | "sad" | "anxious" | "productive"
+  voiceNoteUrl  String?
+  aiSummary     String?
+  aiReflection  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  folder    String   @default("General")
+  tags      String?  // Comma-separated tags e.g. "work,idea"
+  backlinks String?  // JSON string or comma-separated target note IDs
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Workout {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String     // e.g. "Leg Day", "Push Day"
+  duration     Int?       // in minutes
+  caloriesBurned Int?
+  protein      Float?     // daily totals tracked along workouts
+  waterIntake  Float?     // in liters
+  sleepHours   Float?     // sleep duration tracked
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  exercises    WorkoutExercise[]
+}
+
+model WorkoutExercise {
+  id         String   @id @default(uuid())
+  workoutId  String
+  workout    Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  name       String   // e.g. "Bench Press"
+  sets       String   // Stored as JSON string of sets: [{reps: 10, weight: 60}, {reps: 8, weight: 70}]
+  createdAt  DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  category    String   // e.g. "Food", "Rent", "Salary"
+  description String?
+  type        String   @default("EXPENSE") // "INCOME" | "EXPENSE" | "SAVING" | "INVESTMENT"
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String   @unique
+  limit     Float
+  period    String   @default("MONTHLY") // "MONTHLY" | "YEARLY"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   // e.g. "Introduction to Computer Science"
+  code        String?  // e.g. "CS101"
+  gpaWeight   Float    @default(3.0)
+  grade       String?  // e.g. "A", "B+"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  studyItems  StudyItem[]
+}
+
+model StudyItem {
+  id          String   @id @default(uuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String   // e.g. "Midterm Exam", "Ch. 3 Flashcards"
+  type        String   @default("ASSIGNMENT") // "ASSIGNMENT" | "EXAM" | "FLASHCARD"
+  dueDate     DateTime?
+  isCompleted Boolean  @default(false)
+  flashcards  String?  // Stored as JSON string of flashcards: [{front: "Q", back: "A"}]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  githubRepo  String?  // e.g. "youssef/my-app"
+  status      String   @default("PLANNING") // "PLANNING" | "IN_PROGRESS" | "COMPLETED"
+  snippets    String?  // Stored as JSON string of snippets: [{title: "code", code: "const x = 1"}]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tasks       Task[]
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  type        String   // "TASK" | "HABIT" | "BILL" | "SYSTEM"
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AiConversation {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String      @default("New Chat")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  messages  AiMessage[]
+}
+
+model AiMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         String         @default("USER") // "USER" | "AI"
+  content        String
+  createdAt      DateTime       @default(now())
+}
